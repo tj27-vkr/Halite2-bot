@@ -4,7 +4,7 @@ import time
 
 import BotHelper as bh
 
-game = hlt.Game("tj27Bot_v4")
+game = hlt.Game("tj27Bot_v5")
 
 logging.info("tj27Bot Online.")
 
@@ -24,39 +24,37 @@ while True:
     enemy_ships = []
     enemy_ships = [ship for ship in game_map._all_ships() if ship not in my_ships]
     bh.planets_w_ships_assigned = []
-    cnt += 1
     # For every ship that I control
     for ship in my_ships:
         if (time.time() - start_time) > 1.5:
-            break
+            game.send_command_queue(command_queue)
+            command_queue = []
 
         # If the ship is docked
         if ship.docking_status != ship.DockingStatus.UNDOCKED:
             # Skip this ship
             continue
 
-        planet = bh.cloest_planet_of_interest(ship, game_map.all_planets(),t_flag)
-        if cnt >= 3:
-            t_flag = True
 
+        closest_planet     = bh.closest_planet_of_interest(ship, game_map.all_planets(), enemy_ships)
         closest_enemy_ship = bh.closest_enemy_ship(ship, enemy_ships)
-        # For each planet in the game (only non-destroyed planets are included)
-        if planet:
 
-            if ship.can_dock(planet):
+        # For each planet in the game (only non-destroyed planets are included)
+        if closest_planet:
+
+            if ship.can_dock(closest_planet):
                 # We add the command by appending it to the command_queue
-                command_queue.append(ship.dock(planet))
-                bh.planets_w_ships_assigned.append(planet)
+                command_queue.append(ship.dock(closest_planet))
             else:
                 navigate_command = ship.navigate(
-                    ship.closest_point_to(planet),
+                    ship.closest_point_to(closest_planet),
                     game_map,
                     speed=int(hlt.constants.MAX_SPEED),
                     ignore_ships=False)
 
                 if navigate_command:
                     command_queue.append(navigate_command)
-                    bh.planets_w_ships_assigned.append(planet)
+                    bh.planets_w_ships_assigned.append(closest_planet)
 
         elif closest_enemy_ship :
             try:
@@ -68,6 +66,7 @@ while True:
 
                 if navigate_command:
                     command_queue.append(navigate_command)
+                    bh.enemies_w_ships_assigned.append(closest_enemy_ship)
             except:
                 continue
 
